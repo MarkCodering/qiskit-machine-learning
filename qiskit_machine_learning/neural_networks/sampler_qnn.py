@@ -26,6 +26,7 @@ from qiskit_algorithms.gradients import (
     ParamShiftSamplerGradient,
     SamplerGradientResult,
 )
+from qiskit_ibm_runtime import QiskitRuntimeService, Options, Sampler
 
 from qiskit_machine_learning.circuit.library import QNNCircuit
 from qiskit_machine_learning.exceptions import QiskitMachineLearningError
@@ -135,6 +136,8 @@ class SamplerQNN(NeuralNetwork):
         output_shape: int | tuple[int, ...] | None = None,
         gradient: BaseSamplerGradient | None = None,
         input_gradients: bool = False,
+        backend_name: str | None = None,
+        backend_token: str | None = None,
     ):
         """
         Args:
@@ -173,9 +176,18 @@ class SamplerQNN(NeuralNetwork):
             QiskitMachineLearningError: Invalid parameter values.
         """
         # set primitive, provide default
-        if sampler is None:
+        if sampler is None and backend_name is None:
             sampler = Sampler()
-        self.sampler = sampler
+            self.sampler = sampler
+            
+        if backend_name is not None:
+            service = QiskitRuntimeService(channel="ibm_quantum", token=backend_token)
+            options = Options(optimization_level=1)
+            options.execution.shots = 1024  # Options can be set using auto-complete.
+            
+            backend = service.get_backend(backend_name)
+            self.sampler = Sampler(backend=backend, options=options)
+            
 
         # set gradient
         if gradient is None:
